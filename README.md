@@ -72,16 +72,21 @@ O **Projeto FAQ** é uma aplicação web desenvolvida com o objetivo de oferecer
 ## Estrutura do Projeto
 
 ```
-ProjetoFAQ/
 ├── ProjetoFAQ-backend/
+│   ├── bin/
 │   ├── Controllers/
-│   ├── DTOs/
-│   ├── Entities/
+│   ├── Data/
+│   ├── DTO/
 │   ├── Mappings/
-│   ├── Middleware/
+│   ├── Models/
+│   ├── obj/
+│   ├── Properties/
+│   ├── appsettings.json
 │   ├── Program.cs
-│   ├── Startup.cs
-│   └── appsettings.json
+│   ├── ProjetoFAQ.csproj
+│   ├── ProjetoFAQ.http
+│   └── ProjetoFAQ.sln 
+│
 ├── ProjetoFAQ-frontend/
 │   ├── src/
 │   │   ├── views/
