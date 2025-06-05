@@ -1,0 +1,36 @@
+# Geral
+.env
+*.log
+ProjetoFAQ-frontend/node_modules/
+dist/
+.vscode/
+.DS_Store
+
+# Vite / Vue.js
+/.output
+/.cache
+/.nuxt
+/.turbo
+*.local
+
+# C# / .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains IDEs
+.idea/
+*.sln.iml
+
+# VSCode
+.history/
+.vscode/
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.bak
+*.swp
