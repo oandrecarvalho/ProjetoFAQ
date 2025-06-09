@@ -4,7 +4,7 @@
     <component
       :is="tag"
       :value="modelValue"
-      @input="$emit('update:modelValue', $event.target.value)"
+      @input="handleInput"
       class="w-full px-4 sm:px-6 py-2 sm:py-3 bg-[#0a0a0a] text-white rounded-lg border border-[#00FF88]/20 focus:border-[#00FF88] focus:outline-none text-base sm:text-lg font-['Lora']"
       :class="{ 'border-red-500': error }"
       v-bind="$attrs"
@@ -35,6 +35,12 @@ export default {
       validator: value => ['input', 'textarea', 'select'].includes(value)
     }
   },
-  emits: ['update:modelValue']
+  emits: ['update:modelValue'],
+  methods: {
+    handleInput(event) {
+      const value = event.target.value
+      this.$emit('update:modelValue', value)
+    }
+  }
 }
 </script> 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { setUserRole } from './auth';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -37,15 +38,17 @@ api.interceptors.request.use(
         const token = getAuthToken();
         if (token) {
             config.headers.Authorization = token;
-            console.log('[API] Token adicionado à requisição:', {
+            console.log('[API] Requisição:', {
                 url: config.url,
                 method: config.method,
-                headers: config.headers
+                headers: config.headers,
+                data: config.data
             });
         } else {
-            console.log('[API] Nenhum token encontrado para a requisição:', {
+            console.log('[API] Requisição sem token:', {
                 url: config.url,
-                method: config.method
+                method: config.method,
+                data: config.data
             });
         }
         return config;
@@ -59,7 +62,7 @@ api.interceptors.request.use(
 // Interceptor para tratamento de erros
 api.interceptors.response.use(
     response => {
-        console.log('[API Response]', {
+        console.log('[API] Resposta:', {
             url: response.config.url,
             method: response.config.method,
             status: response.status,
@@ -68,7 +71,7 @@ api.interceptors.response.use(
         return response;
     },
     error => {
-        console.error('[API Error]', {
+        console.error('[API] Erro:', {
             url: error.config?.url,
             method: error.config?.method,
             status: error.response?.status,
@@ -77,7 +80,7 @@ api.interceptors.response.use(
         });
 
         if (error.response?.status === 401) {
-            console.log('[API] Erro de autenticação detectado. Token atual:', getAuthToken());
+            console.log('[API] Erro de autenticação detectado');
             localStorage.removeItem('token');
         }
 
@@ -100,28 +103,72 @@ const retryRequest = async (config, retries = MAX_RETRIES) => {
 };
 
 export const authService = {
-    login: (credentials) => retryRequest({ method: 'post', url: '/auth/login', data: credentials })
+    login: async (credentials) => {
+        console.log('Iniciando login com:', credentials.email)
+        const response = await retryRequest({ method: 'post', url: '/auth/login', data: credentials });
+
+        // Força o papel de admin se o email contiver 'admin'
+        const isAdminUser = credentials.email.toLowerCase().includes('admin')
+        console.log('É admin?', isAdminUser)
+
+        // Define o papel do usuário
+        setUserRole(isAdminUser ? 'admin' : 'user')
+
+        // Verifica se o papel foi definido corretamente
+        const currentRole = localStorage.getItem('userRole')
+        console.log('Papel definido como:', currentRole)
+
+        // Armazena o token
+        if (response.data.token) {
+            localStorage.setItem('token', response.data.token)
+        }
+
+        return response;
+    }
 };
 
 export const faqService = {
-    getAllQuestions: () => retryRequest({ method: 'get', url: '/questions' }),
-    createQuestion: (questionData) => retryRequest({ method: 'post', url: '/questions', data: questionData }),
-    updateQuestion: (id, questionData) => retryRequest({ method: 'put', url: `/questions/${id}`, data: questionData }),
-    deleteQuestion: (id) => retryRequest({ method: 'delete', url: `/questions/${id}` })
+    getAllQuestions: async () => {
+        console.log('[FAQ Service] Buscando todas as perguntas');
+        try {
+            const response = await retryRequest({ method: 'get', url: '/questions' });
+            console.log('[FAQ Service] Resposta recebida:', response);
+            return response;
+        } catch (error) {
+            console.error('[FAQ Service] Erro ao buscar perguntas:', error);
+            throw error;
+        }
+    },
+    createQuestion: (questionData) => {
+        console.log('[FAQ Service] Criando pergunta:', questionData);
+        return retryRequest({ method: 'post', url: '/questions', data: questionData });
+    },
+    updateQuestion: (id, questionData) => {
+        console.log('[FAQ Service] Atualizando pergunta:', { id, questionData });
+        return retryRequest({ method: 'put', url: `/questions/${id}`, data: questionData });
+    },
+    deleteQuestion: (id) => {
+        console.log('[FAQ Service] Deletando pergunta:', id);
+        return retryRequest({
+            method: 'post',
+            url: `/questions/${id}/delete`,
+            data: { cascade: true }
+        });
+    }
 };
 
 export const answerService = {
     createAnswer: (questionId, data) => {
         console.log('Criando resposta:', { questionId, data })
-        return retryRequest({ method: 'post', url: `/api/questions/${questionId}/answers`, data })
+        return retryRequest({ method: 'post', url: `/answers`, data: { ...data, questionId } })
     },
     updateAnswer: (questionId, answerId, data) => {
         console.log('Atualizando resposta:', { questionId, answerId, data })
-        return retryRequest({ method: 'put', url: `/api/questions/${questionId}/answers/${answerId}`, data })
+        return retryRequest({ method: 'put', url: `/answers/${answerId}`, data: { ...data, questionId } })
     },
     deleteAnswer: (questionId, answerId) => {
         console.log('Deletando resposta:', { questionId, answerId })
-        return retryRequest({ method: 'delete', url: `/api/questions/${questionId}/answers/${answerId}` })
+        return retryRequest({ method: 'delete', url: `/answers/${answerId}` })
     }
 };
 

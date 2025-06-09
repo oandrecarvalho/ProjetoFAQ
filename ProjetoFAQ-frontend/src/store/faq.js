@@ -25,12 +25,18 @@ const faqStore = {
             const questionsData = Array.isArray(response.data) ? response.data : [response.data]
             console.log('Dados brutos das perguntas:', questionsData)
 
+            if (questionsData.length === 0) {
+                console.log('Nenhuma pergunta encontrada')
+                questions.value = []
+                return []
+            }
+
             const processedQuestions = questionsData.map(q => {
                 console.log('Processando pergunta:', q)
                 const processed = {
                     id: q.id,
                     question: q.text || q.question,
-                    answer: q.answer?.text || q.answer || null,
+                    answer: q.answers && q.answers.length > 0 ? q.answers[0].text : null,
                     autor: q.author || q.autor || 'Anônimo',
                     data: q.createdAt ? new Date(q.createdAt) : new Date(),
                     productId: q.productId || null,
@@ -40,7 +46,7 @@ const faqStore = {
                 return processed
             })
 
-            console.log('Todas as perguntas processadas:', processedQuestions)
+            console.log('Perguntas processadas:', processedQuestions)
             questions.value = processedQuestions
             return processedQuestions
         } catch (err) {
@@ -65,19 +71,9 @@ const faqStore = {
                 throw new Error('Resposta inválida do servidor')
             }
 
-            const newQuestion = {
-                id: response.data.id,
-                question: response.data.text || response.data.question,
-                answer: null,
-                autor: response.data.author || questionData.author || 'Anônimo',
-                data: new Date(response.data.createdAt || new Date()),
-                productId: response.data.productId || questionData.productId || null,
-                type: response.data.type || (questionData.productId ? 'PRODUCT' : 'GENERAL')
-            }
-
-            console.log('Nova pergunta processada:', newQuestion)
-            questions.value = [...questions.value, newQuestion]
-            return newQuestion
+            // Buscar todas as perguntas novamente para garantir consistência
+            await this.getQuestions()
+            return response.data
         } catch (err) {
             console.error('Erro ao adicionar pergunta:', err)
             error.value = err.message || 'Erro ao adicionar pergunta. Por favor, tente novamente.'
@@ -86,37 +82,50 @@ const faqStore = {
     },
     async updateQuestion(id, questionData) {
         try {
+            console.log('Atualizando pergunta:', { id, questionData })
             if (questionData.answer) {
+                console.log('Criando resposta para pergunta:', id)
                 const answerResponse = await answerService.createAnswer(id, {
                     text: questionData.answer,
                     author: 'Admin'
                 })
+                console.log('Resposta da API (answer):', answerResponse)
 
                 if (!answerResponse.data) {
                     throw new Error('Resposta inválida do servidor')
                 }
 
-                questions.value = questions.value.map(q =>
-                    q.id === id
-                        ? { ...q, answer: answerResponse.data.text }
-                        : q
-                )
+                const updatedQuestions = questions.value.map(q => {
+                    if (q.id === id) {
+                        console.log('Atualizando pergunta com resposta:', q.id)
+                        return { ...q, answer: answerResponse.data.text }
+                    }
+                    return q
+                })
+                console.log('Perguntas atualizadas:', updatedQuestions)
+                questions.value = updatedQuestions
 
                 return questions.value.find(q => q.id === id)
             } else {
+                console.log('Atualizando texto da pergunta:', id)
                 const response = await faqService.updateQuestion(id, {
                     text: questionData.question
                 })
+                console.log('Resposta da API (update):', response)
 
                 if (!response.data) {
                     throw new Error('Resposta inválida do servidor')
                 }
 
-                questions.value = questions.value.map(q =>
-                    q.id === id
-                        ? { ...q, question: response.data.text }
-                        : q
-                )
+                const updatedQuestions = questions.value.map(q => {
+                    if (q.id === id) {
+                        console.log('Atualizando texto da pergunta:', q.id)
+                        return { ...q, question: response.data.text }
+                    }
+                    return q
+                })
+                console.log('Perguntas atualizadas:', updatedQuestions)
+                questions.value = updatedQuestions
 
                 return questions.value.find(q => q.id === id)
             }
@@ -130,9 +139,39 @@ const faqStore = {
         try {
             await faqService.deleteQuestion(id)
             questions.value = questions.value.filter(q => q.id !== id)
+            return true
         } catch (err) {
             console.error('Erro ao deletar pergunta:', err)
             error.value = err.message || 'Erro ao deletar pergunta. Por favor, tente novamente.'
+            throw error.value
+        }
+    },
+    async answerQuestion(id, answer) {
+        try {
+            console.log('Respondendo pergunta:', { id, answer })
+            const response = await answerService.createAnswer(id, {
+                text: answer,
+                author: 'Admin'
+            })
+            console.log('Resposta da API:', response)
+
+            if (!response.data) {
+                throw new Error('Resposta inválida do servidor')
+            }
+
+            // Atualiza a pergunta localmente
+            const updatedQuestions = questions.value.map(q => {
+                if (q.id === id) {
+                    return { ...q, answer: response.data.text }
+                }
+                return q
+            })
+            questions.value = updatedQuestions
+
+            return response.data
+        } catch (err) {
+            console.error('Erro ao responder pergunta:', err)
+            error.value = err.message || 'Erro ao responder pergunta. Por favor, tente novamente.'
             throw error.value
         }
     }

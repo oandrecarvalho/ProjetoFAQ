@@ -72,17 +72,29 @@
                    transition-colors duration-300">
             <option value="" disabled>Escolha um produto</option>
             <option v-for="produto in produtos" :key="produto.id" :value="produto.id">
-              {{ produto.nome }}
+              {{ produto.name }}
             </option>
           </select>
         </div>
 
         <!-- Campo da Pergunta -->
-        <BaseInput v-model="formData.question" label="Qual é a sua dúvida?" tag="textarea" rows="3"
-          placeholder="Descreva sua pergunta detalhadamente..." />
+        <BaseInput 
+          v-model="formData.question" 
+          label="Qual é a sua dúvida?" 
+          tag="textarea" 
+          rows="3"
+          placeholder="Descreva sua pergunta detalhadamente..." 
+          :error="error"
+        />
 
         <!-- Campo do Nome -->
-        <BaseInput v-model="formData.autor" label="Seu Nome" type="text" placeholder="Como podemos te chamar?" />
+        <BaseInput 
+          v-model="formData.autor" 
+          label="Seu Nome" 
+          type="text" 
+          placeholder="Como podemos te chamar?" 
+          :error="error"
+        />
 
         <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 mt-6 sm:mt-8">
           <BaseButton variant="secondary" @click="$emit('close')" class="w-full sm:w-auto">
@@ -156,10 +168,13 @@ export default {
         const questionData = {
           text: this.formData.question,
           author: this.formData.autor,
-          productId: this.formData.tipo === 'produto' ? parseInt(this.formData.produtoId) : null
+          productId: this.formData.tipo === 'produto' ? parseInt(this.formData.produtoId) : null,
+          type: this.formData.tipo === 'produto' ? 'PRODUCT' : 'GENERAL'
         }
 
+        console.log('Enviando dados da pergunta:', questionData)
         const response = await faqService.createQuestion(questionData)
+        console.log('Resposta da API:', response)
         
         // Alerta de sucesso
         await this.$swal.fire({

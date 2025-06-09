@@ -15,7 +15,7 @@
                         </span>
                     </router-link>
                     <div class="hidden md:flex space-x-8">
-                        <router-link to="/" class="nav-link">
+                        <router-link to="/produtos" class="nav-link">
                             <span class="relative">
                                 Produtos
                                 <span
@@ -33,13 +33,17 @@
                 </div>
 
                 <!-- Botão de Login -->
-                <div class="flex items-center">
-                    <router-link to="/login" class="login-button group">
+                <div class="flex items-center space-x-4">
+                    <div v-if="userEmail" class="text-gray-300">
+                        <span class="text-sm">Logado como:</span>
+                        <span class="text-[#00FF88] ml-2">{{ userEmail }}</span>
+                    </div>
+                    <button @click="handleLogout" class="login-button group">
                         <span class="relative z-10">Sair</span>
                         <div
                             class="absolute inset-0 bg-gradient-to-r from-[#00FF88] to-[#00cc6a] rounded-lg transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left">
                         </div>
-                    </router-link>
+                    </button>
                 </div>
             </div>
         </div>
@@ -47,8 +51,34 @@
 </template>
 
 <script>
+import { getUserEmail, clearAuth, isAuthenticated } from '@/services/auth'
+import { useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+
 export default {
-    name: 'NavigationBar'
+    name: 'NavigationBar',
+    setup() {
+        const router = useRouter()
+        const userEmail = ref(getUserEmail())
+
+        // Atualiza o email quando a rota mudar
+        watch(() => router.currentRoute.value, () => {
+            if (isAuthenticated()) {
+                userEmail.value = getUserEmail()
+            }
+        })
+
+        const handleLogout = () => {
+            clearAuth()
+            userEmail.value = null
+            router.push('/login')
+        }
+
+        return {
+            userEmail,
+            handleLogout
+        }
+    }
 }
 </script>
 

@@ -16,7 +16,12 @@
             <input type="password" v-model="formData.password" required>
             <label>Senha</label>
           </div>
-          <button type="submit" class="btn" :disabled="isLoading">Entrar</button>
+          <div v-if="error" class="error-message">
+            {{ error }}
+          </div>
+          <button type="submit" class="btn" :disabled="isLoading">
+            {{ isLoading ? 'Entrando...' : 'Entrar' }}
+          </button>
           <div class="login-register">
             <p>Não tem uma conta? <a href="#" class="register-link" @click.prevent="toggleForm">Registrar</a></p>
           </div>
@@ -37,7 +42,15 @@
             <input type="password" v-model="registerForm.password" required>
             <label>Senha</label>
           </div>
-          <button type="submit" class="btn">Registrar</button>
+          <div v-if="registerError" class="error-message">
+            {{ registerError }}
+          </div>
+          <div v-if="registerSuccess" class="success-message">
+            {{ registerSuccess }}
+          </div>
+          <button type="submit" class="btn" :disabled="isRegisterLoading">
+            {{ isRegisterLoading ? 'Registrando...' : 'Registrar' }}
+          </button>
           <div class="login-register">
             <p>Já tem uma conta? <a href="#" class="login-link" @click.prevent="toggleForm">Entrar</a></p>
           </div>
@@ -50,7 +63,7 @@
 <script>
 import backgroundImage from '@/assets/images/fundo.png'
 import { authService } from '@/services/api'
-import { setUserRole } from '@/services/auth'
+import { setUserEmail } from '@/services/auth'
 
 export default {
   name: 'LoginView',
@@ -67,7 +80,10 @@ export default {
       },
       backgroundImage,
       isLoading: false,
-      error: null
+      error: null,
+      isRegisterLoading: false,
+      registerError: null,
+      registerSuccess: null
     }
   },
   methods: {
@@ -79,27 +95,56 @@ export default {
       this.$router.push('/')
     },
     async handleLogin() {
+      console.log('Iniciando login...');
       this.isLoading = true
       this.error = null
 
       try {
         const response = await authService.login(this.formData)
+        console.log('Resposta da API:', response.data);
         localStorage.setItem('token', response.data.token)
-        // Define o papel do usuário como 'user' por padrão
-        setUserRole('user')
-        this.$router.push('/')
+        setUserEmail(this.formData.email)
+        // Não precisamos definir o papel do usuário aqui, pois já foi definido no authService.login
+        this.$router.push('/produtos')
       } catch (err) {
-        this.error = err.response?.data?.message || 'Erro ao fazer login'
         console.error('Login error:', err)
+        if (err.response?.status === 401) {
+          this.error = 'Senha incorreta. Por favor, tente novamente.'
+        } else if (err.response?.status === 404) {
+          this.error = 'Usuário não encontrado.'
+        } else {
+          this.error = err.response?.data?.message || 'Erro ao fazer login. Por favor, tente novamente.'
+        }
       } finally {
         this.isLoading = false
       }
     },
-    handleRegister() {
-      // Implementar lógica de registro
-      console.log('Register attempt:', this.registerForm)
-      // Após registro bem-sucedido:
-      this.isRegister = false
+    async handleRegister() {
+      this.isRegisterLoading = true
+      this.registerError = null
+      this.registerSuccess = null
+
+      try {
+        const response = await authService.register(this.registerForm)
+        console.log('Registro bem-sucedido:', response.data)
+        
+        this.registerSuccess = 'Usuário criado com sucesso! Você já pode fazer login.'
+        this.registerForm = {
+          username: '',
+          password: ''
+        }
+        
+        // Limpa a mensagem de sucesso após 3 segundos
+        setTimeout(() => {
+          this.registerSuccess = null
+          this.isRegister = false
+        }, 3000)
+      } catch (err) {
+        console.error('Erro no registro:', err)
+        this.registerError = err.response?.data?.message || 'Erro ao criar usuário. Por favor, tente novamente.'
+      } finally {
+        this.isRegisterLoading = false
+      }
     }
   }
 }
@@ -279,5 +324,23 @@ export default {
 .login-register p a:hover {
   color: #fff;
   text-decoration: underline;
+}
+
+.error-message {
+  color: #ff4444;
+  background-color: rgba(255, 68, 68, 0.1);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  padding: 10px;
+  border-radius: 6px;
+  margin: 10px 0;
+  text-align: center;
+  font-size: 0.9em;
+}
+
+.success-message {
+  color: #00FF88;
+  font-size: 0.9em;
+  margin: 10px 0;
+  text-align: center;
 }
 </style>
